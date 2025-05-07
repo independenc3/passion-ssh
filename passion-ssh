@@ -70,13 +70,13 @@ function passion-ssh() {
   echo "You have selected ${BOLD}$env_name${NORMAL} environment and ${BOLD}$service_name${NORMAL} service. The region is ${BOLD}$region${NORMAL}."
 
   while true; do
-    echo "Enter a command to run on the selected environment and service (default: /bin/bash, type 'exit' to exit):"
+    echo "Enter a command to run on the selected environment and service (default: /bin/sh, type 'exit' to exit):"
     read -r user_command
 
     if [[ $user_command == "exit" ]]; then
       return 0
     elif [[ -z $user_command ]]; then
-      command="/bin/bash"
+      command="/bin/sh"
       break
     else
       command=$user_command
