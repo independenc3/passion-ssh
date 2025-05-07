@@ -1,0 +1,98 @@
+function passion-ssh() {
+  BOLD=$(tput bold)
+  NORMAL=$(tput sgr0)
+
+  local env_options=("production" "staging" "development")
+  # exclude services that are not needed to be connected to
+  # remove any from the list if you want to connect to them
+  local exclude_services=("creator-payments" "creator-payments-jobs" "independence-nginx" "app-submission-automation-server" "app-submission-automation-ui")
+  local env_name=""
+  local service_name=""
+  local region=""
+  local command=""
+
+  while true; do
+    echo "Select an environment:"
+    for i in {1..$#env_options}; do
+      echo "$i. ${env_options[i]}"
+    done
+    echo "0. Exit"
+
+    read -r env_selection
+    if (( env_selection == 0 )); then
+      return 0
+    elif (( env_selection >= 1 && env_selection <= $#env_options )); then
+      env_name=$env_options[env_selection]
+      break
+    else
+      echo "Invalid selection. Please try again."
+    fi
+  done
+
+  case $env_name in
+    "staging")
+      region="eu-west-1"
+      ;;
+    "development")
+      region="eu-central-1"
+      ;;
+    "production")
+      region="us-east-1"
+      ;;
+  esac
+  
+  local all_service_options=("${(@f)$(ecs-session --list --region ${region} --cluster ${env_name}-passion | awk '{print $(NF-1)}' | sed 's/-service$//')}")
+  local service_options=()
+  for s in "${all_service_options[@]}"; do
+    if [[ ! " ${exclude_services[@]} " =~ " $s " ]]; then
+      service_options+=("$s")
+    fi
+  done
+
+  while true; do
+    echo "Select a service:"
+    for i in {1..$#service_options}; do
+      echo "$i. ${service_options[i]}"
+    done
+    echo "0. Exit"
+
+    read -r service_selection
+    if (( service_selection == 0 )); then
+      return 0
+    elif (( service_selection >= 1 && service_selection <= $#service_options )); then
+      service_name=$service_options[service_selection]
+      break
+    else
+      echo "Invalid selection. Please try again."
+    fi
+  done
+
+  echo "You have selected ${BOLD}$env_name${NORMAL} environment and ${BOLD}$service_name${NORMAL} service. The region is ${BOLD}$region${NORMAL}."
+
+  while true; do
+    echo "Enter a command to run on the selected environment and service (default: /bin/bash, type 'exit' to exit):"
+    read -r user_command
+
+    if [[ $user_command == "exit" ]]; then
+      return 0
+    elif [[ -z $user_command ]]; then
+      command="/bin/bash"
+      break
+    else
+      command=$user_command
+      break
+    fi
+  done
+
+  echo "Running ${BOLD}$command${NORMAL} on ${BOLD}$env_name${NORMAL} environment and ${BOLD}$service_name${NORMAL} service..."
+
+  # store ARN to $task
+  task=$(aws ecs list-tasks --service ${env_name}-${service_name}  --cluster ${env_name}-passion --region ${region} | jq -r '.taskArns[0]')
+
+  # store task ENI to $interface_id
+  interface_id=$(aws ecs describe-tasks --task=${task} --cluster ${env_name}-passion --region ${region} | jq -r '.tasks[] | select(.desiredStatus="RUNNING").attachments[] | select(.type == "ElasticNetworkInterface").details[] | select(.name == "networkInterfaceId").value')
+  
+  private_ip=$(aws ec2 describe-network-interfaces --region ${region} --network-interface-ids ${interface_id} | jq -r '.NetworkInterfaces[0].PrivateIpAddress')
+  
+  ecs-session $private_ip ${service_name}-service --cluster ${env_name}-passion --region $region  --command $command
+}
