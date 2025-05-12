@@ -49,6 +49,9 @@ function passion-ssh() {
     fi
   done
   local service_options=("${(@u)filtered_services[@]}")
+  if [[ $env_name == "development" ]]; then
+    service_options+=("service I'm looking for is not in the list")
+  fi
 
   while true; do
     echo "Select a service:"
@@ -61,7 +64,12 @@ function passion-ssh() {
     if (( service_selection == 0 )); then
       return 0
     elif (( service_selection >= 1 && service_selection <= $#service_options )); then
-      service_name=$service_options[service_selection]
+      service_name=${service_options[service_selection]}
+      if [[ $env_name == "development" && $service_name == "service I'm looking for is not in the list" ]]; then
+        echo "Launching k9s..."
+        k9s
+        return 0
+      fi
       break
     else
       echo "Invalid selection. Please try again."
