@@ -42,12 +42,13 @@ function passion-ssh() {
   esac
   
   local all_service_options=("${(@f)$(ecs-session --list --region ${region} --cluster ${env_name}-passion | awk '{print $(NF-1)}' | sed 's/-service$//')}")
-  local service_options=()
+  local filtered_services=()
   for s in "${all_service_options[@]}"; do
     if [[ ! " ${exclude_services[@]} " =~ " $s " ]]; then
-      service_options+=("$s")
+      filtered_services+=("$s")
     fi
   done
+  local service_options=("${(@u)filtered_services[@]}")
 
   while true; do
     echo "Select a service:"
