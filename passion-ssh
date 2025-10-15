@@ -1,4 +1,4 @@
-function passion-ssh() {
+function passion-ssh2() {
   BOLD=$(tput bold)
   NORMAL=$(tput sgr0)
 
@@ -48,10 +48,10 @@ function passion-ssh() {
   local all_service_options
   if echo "$ecs_output" | head -1 | grep -q "cluster_name.*task_id.*group_name"; then
     # v2 format: skip header line and extract from group_name column (3rd column)
-    all_service_options=("${(@f)$(echo "$ecs_output" | tail -n +2 | awk '{print $3}' | sed 's/service://' | sed 's/-service$//')}")
+    all_service_options=("${(@f)$(echo "$ecs_output" | tail -n +2 | awk '{print $3}' | sed 's/service://' | sed 's/-service$//' | sed "s/^${env_name}-//" | grep -v '^---' | grep -v '^$')}")
   else
-    # v1 format: extract from second-to-last column
-    all_service_options=("${(@f)$(echo "$ecs_output" | awk '{print $(NF-1)}' | sed 's/-service$//')}")
+    # v1 format: extract from second-to-last column and filter out separators
+    all_service_options=("${(@f)$(echo "$ecs_output" | awk '{print $(NF-1)}' | sed 's/-service$//' | sed "s/^${env_name}-//" | grep -v '^---' | grep -v '^$')}")
   fi
   local filtered_services=()
   for s in "${all_service_options[@]}"; do
