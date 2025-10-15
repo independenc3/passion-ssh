@@ -1,4 +1,4 @@
-function passion-ssh2() {
+function passion-ssh() {
   BOLD=$(tput bold)
   NORMAL=$(tput sgr0)
 
