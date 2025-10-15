@@ -41,7 +41,18 @@ function passion-ssh() {
       ;;
   esac
   
-  local all_service_options=("${(@f)$(ecs-session --list --region ${region} --cluster ${env_name}-passion | awk '{print $(NF-1)}' | sed 's/-service$//')}")
+  # Get ecs-session output and detect version
+  local ecs_output=$(ecs-session --list --region ${region} --cluster ${env_name}-passion)
+  
+  # Detect version by checking if the output has headers (v2) or not (v1)
+  local all_service_options
+  if echo "$ecs_output" | head -1 | grep -q "cluster_name.*task_id.*group_name"; then
+    # v2 format: skip header line and extract from group_name column (3rd column)
+    all_service_options=("${(@f)$(echo "$ecs_output" | tail -n +2 | awk '{print $3}' | sed 's/service://' | sed 's/-service$//')}")
+  else
+    # v1 format: extract from second-to-last column
+    all_service_options=("${(@f)$(echo "$ecs_output" | awk '{print $(NF-1)}' | sed 's/-service$//')}")
+  fi
   local filtered_services=()
   for s in "${all_service_options[@]}"; do
     if [[ ! " ${exclude_services[@]} " =~ " $s " ]]; then
